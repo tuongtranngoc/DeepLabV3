@@ -1,0 +1,7 @@
+dataset
+**/__pycache__/
+src/weights/*
+exps
+logs
+outputs
+debugs
