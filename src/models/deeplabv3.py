@@ -1,5 +1,5 @@
-from models.backbones.resnet import resnet_feature_extraction
-from heads import DeepLabHead, DeepLabHeadV3Plus
+from src.models.backbones.resnet import resnet_feature_extraction
+from src.models.heads import DeepLabHead, DeepLabHeadV3Plus
 
 import torch
 import torch.nn as nn
@@ -8,12 +8,13 @@ import torch.nn.functional as F
 
 class DeepLabV3(nn.Module):
     def __init__(self, head_name, backbone_name, num_classes, output_stride):
+        super(DeepLabV3,self).__init__()
         self.backbone = resnet_feature_extraction(backbone_name)
         if output_stride == 8:
             aspp_dilate = [12, 24, 36]
         else:
             aspp_dilate = [6, 12, 18]
-
+        
         inplanes = 2048
         low_level_planes = 256
         
@@ -29,5 +30,8 @@ class DeepLabV3(nn.Module):
         x = F.interpolate(x, size=input_shape, mode='bilinear', align_corners=False)
         return x
 
-    
 
+if __name__ == "__main__":
+    model = DeepLabV3('deeplabv3', 'resnet101', 1000, 16)
+    from src.utils.visualization import Visualizer
+    Visualizer.visualize_network(model)
