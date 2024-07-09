@@ -1,5 +1,6 @@
-from src.models.backbones.resnet import resnet_feature_extraction
+from src.models.utils import IntermediateLayerGetter
 from src.models.heads import DeepLabHead, DeepLabHeadV3Plus
+from src.models.backbones.resnet import resnet_feature_extraction
 
 import torch
 import torch.nn as nn
@@ -9,7 +10,13 @@ import torch.nn.functional as F
 class DeepLabV3(nn.Module):
     def __init__(self, head_name, backbone_name, num_classes, output_stride):
         super(DeepLabV3,self).__init__()
-        self.backbone = resnet_feature_extraction(backbone_name)
+        backbone = resnet_feature_extraction(backbone_name)
+        backbone.layer4[0].conv2.stride = (1, 1)
+        backbone.layer4[0].downsample[0].stride = (1, 1)
+        for i in range(1, 3):
+            backbone.layer4[i].conv2.padding = (2, 2)
+            backbone.layer4[i].conv2.dilation = (2, 2)
+
         if output_stride == 8:
             aspp_dilate = [12, 24, 36]
         else:
@@ -19,9 +26,18 @@ class DeepLabV3(nn.Module):
         low_level_planes = 256
         
         if head_name == 'deeplabv3plus':
+            return_layers = {
+                'layer4': 'out',
+                'layer1': 'low_level'
+            }
             self.classifier = DeepLabHeadV3Plus(inplanes, low_level_planes, num_classes, aspp_dilate)
         elif head_name == 'deeplabv3':
+            return_layers = {
+                'layer4': 'out'
+            }
             self.classifier = DeepLabHead(inplanes, num_classes, aspp_dilate)
+        self.backbone = IntermediateLayerGetter(backbone, return_layers=return_layers)
+
 
     def forward(self, x: torch.Tensor):
         input_shape = x.shape[-2:]
@@ -32,6 +48,6 @@ class DeepLabV3(nn.Module):
 
 
 if __name__ == "__main__":
-    model = DeepLabV3('deeplabv3', 'resnet101', 1000, 16)
+    model = DeepLabV3('deeplabv3plus', 'resnet101', 1000, 16)
     from src.utils.visualization import Visualizer
     Visualizer.visualize_network(model)

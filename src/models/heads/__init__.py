@@ -140,7 +140,6 @@ class ASPP(nn.Module):
         return self.project(res)
 
 
-
 def convert_to_separable_conv(module):
     new_module = module
     if isinstance(module, nn.Conv2d) and module.kernel_size[0]>1:

@@ -11,7 +11,7 @@ Train:
     image_dir: dataset/icdar2015/train/images
     anno_dir: dataset/icdar2015/train/gt
     transforms:
-      image_shape: [3, 513, 514]
+      image_shape: [3, 513, 513]
       augmentation: True
       mean: [0.485, 0.456, 0.406]
       std: [0.229, 0.224, 0.225]
