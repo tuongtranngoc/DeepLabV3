@@ -12,7 +12,8 @@ from . import *
 
 class Visualizer:
     device = cfg['device']
-    C, H, W = cfg['Train']['dataset']['transforms']['image_shape']
+    C, H, W = cfg['Train']['transforms']['image_shape']
+
     @classmethod
     def visualize_network(cls, model):
         os.makedirs(cfg['Debug']['model'], exist_ok=True)
@@ -24,3 +25,9 @@ class Visualizer:
                    save_graph=True,
                    directory=cfg['Debug']['model'],
                    graph_name=cfg['model']['backbone'])
+        
+    @classmethod
+    def save_debug(cls, image, save_dir, basename):
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, basename)
+        cv2.imwrite(save_path, image)
