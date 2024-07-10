@@ -45,7 +45,7 @@ class VocDataset(Dataset):
     
     def get_image_mask(self, img_path, mask_path, is_aug):
         image = cv2.imread(img_path)[..., ::-1]
-        mask = cv2.imread(mask_path)
+        mask = cv2.imread(mask_path, 0)
         if is_aug:
             image, mask = self.transform.augment(image=image, mask=mask)
         image, mask = self.transform.transform(image=image, mask=mask)

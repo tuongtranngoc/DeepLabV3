@@ -26,10 +26,13 @@ class DataUtils:
             if image.dim() > 3:
                 image = image.squeeze()
             image = image.detach().cpu().numpy()
-            image = image.transpose((1, 2, 0))
-            image = cls.denormalize(image)
-            image = np.ascontiguousarray(image, np.uint8)
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            if image.ndim == 3:
+                image = image.transpose((1, 2, 0))
+                image = cls.denormalize(image)
+                image = np.ascontiguousarray(image, np.uint8)
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            elif image.ndim == 2:
+                image = np.ascontiguousarray(image, np.uint8)
             return image
         elif isinstance(image, np.ndarray):
             image = cls.denormalize(image)
