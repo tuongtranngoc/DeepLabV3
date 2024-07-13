@@ -7,14 +7,14 @@ import sys
 
 from loguru import logger
 
-from . import cfg
+from src import config as cfg
 
 
 def set_logger_tag(logger, tag):
     logger.configure(extra={"tag": tag})
 
 
-logfile = f'{os.path.join(cfg["Debug"]["log_dir"], "DB")}' + '_' + '{time:YYYY-MM-DD}.log'
+logfile = f'{os.path.join(cfg["Debug"]["log_dir"], cfg["model"]["backbone"])}' + '_' + '{time:YYYY-MM-DD}.log'
 set_logger_tag(logger, 'DB')
 
 logger_format = (

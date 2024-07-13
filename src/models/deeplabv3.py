@@ -25,13 +25,13 @@ class DeepLabV3(nn.Module):
         inplanes = 2048
         low_level_planes = 256
         
-        if head_name == 'deeplabv3plus':
+        if head_name.lower() == 'deeplabv3plus':
             return_layers = {
                 'layer4': 'out',
                 'layer1': 'low_level'
             }
             self.classifier = DeepLabHeadV3Plus(inplanes, low_level_planes, num_classes, aspp_dilate)
-        elif head_name == 'deeplabv3':
+        elif head_name.lower() == 'deeplabv3':
             return_layers = {
                 'layer4': 'out'
             }
