@@ -2,11 +2,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from . import cfg
-
-import torch
 import numpy as np
-from torchmetrics.segmentation.mean_iou import MeanIoU
 
 
 class AverageMeter(object):
@@ -34,14 +30,3 @@ class AverageMeter(object):
             return self.sum
         else:
            return self.value
-
-
-class MIoUTorchMetric(object):
-    def __init__(self, num_classes):
-        self.miou_mt = MeanIoU(num_classes=num_classes, include_background=True, per_class=True)
-    
-    def compute_acc(self, preds, target):
-        """MEAN INTERSECTION OVER UNION (MIOU)
-        Reference: https://lightning.ai/docs/torchmetrics/stable/segmentation/mean_iou.html
-        """
-        self.miou_mt.update(preds, target)

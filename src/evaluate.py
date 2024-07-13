@@ -3,6 +3,7 @@ import cv2
 import torch
 import argparse
 import numpy as np
+import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 from torchmetrics.segmentation import MeanIoU
@@ -22,7 +23,8 @@ class DeepLabV3Evaluate:
         self.args = args
         self.model = model
         self.dataset = dataset
-        self.loss_func = DeepLabv3Loss().to(args.device)
+        self.loss_func = DeepLabv3Loss(alpha=self.args.alpha, 
+                                       gamma=self.args.gamma).to(args.device)
 
         self.dataloader = DataLoader(dataset=self.dataset,
                                      batch_size=args.batch_size,
@@ -30,29 +32,32 @@ class DeepLabV3Evaluate:
                                      num_workers=args.num_workers,
                                      pin_memory=args.pin_memory)
 
-    def calculate_mIoU(self, mt_miou, preds, target):
-        mt_miou.update(preds, target)
-
-
     def _eval(self):
         metrics = {
             'eval_loss': AverageMeter(),
             'eval_mIoU': AverageMeter()
         }
-        miou_mt = MeanIoU(num_classes=self.args.num_classes, include_background=True, per_class=True)
+        mIoU_mt = MeanIoU(num_classes=self.args.num_classes, include_background=False, per_class=True)
         self.model.eval()
 
         for i, (images, labels, idxs) in enumerate(self.dataloader):
             with torch.no_grad():
                 images = DataUtils.to_device(images)
-                labels = DataUtils.to_device(labels)
-
+                labels = DataUtils.to_device(labels.long())
+                
                 outs = self.model(images)
-                loss = self.loss_func(labels, outs)
+                loss = self.loss_func(outs, labels)
+                preds = outs.max(dim=1)[1].detach().cpu()
+                ignore_idxs = torch.where(labels==255)
+                labels[ignore_idxs] = 0
+                targets = labels.detach().cpu()
+                metrics['eval_loss'].update(loss.item())
+                mIoU_mt.update(preds, targets)
 
-
-                for j, idx in enumerate(idxs):
-                    img_path, targets = self.dataset.load_voc_dataset[idx]
+        mIoU = mIoU_mt.compute()
+        metrics['eval_mIoU'].update(mIoU.item())
+        logger.info(f'loss: {metrics["eval_loss"].get_value("mean"): .5f}, MeanIoU: {metrics["eval_mIoU"].get_value("mean"): .5f}')
+        return metrics
 
 
 def cli():

@@ -31,3 +31,8 @@ class Visualizer:
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, basename)
         cv2.imwrite(save_path, image)
+
+
+    @classmethod
+    def debug_output(cls, dataset, idxs, model, mode):
+        os,
