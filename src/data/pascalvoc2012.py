@@ -25,7 +25,7 @@ class VocDataset(Dataset):
         self.is_aug = cfg[mode]['transforms']['augmentation']
         self.image_shape = cfg[mode]['transforms']['image_shape']
         self.transform = TransformDeepLabv3()
-        self.dataset = self.load_voc_dataset()
+        self.voc_dataset = self.load_voc_dataset()
     
     def load_voc_dataset(self):
         dataset = []
@@ -48,9 +48,9 @@ class VocDataset(Dataset):
         image, mask = self.transform.transform(image=image, mask=mask)
         return image, mask
     
-    def __len__(self): return len(self.dataset)
+    def __len__(self): return len(self.voc_dataset)
 
     def __getitem__(self, index):
-        img_path, mask_path = self.dataset[index]
+        img_path, mask_path = self.voc_dataset[index]
         image, mask = self.get_image_mask(img_path, mask_path, is_aug=self.is_aug)
-        return image, mask
+        return image, mask, index
