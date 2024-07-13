@@ -4,6 +4,7 @@ resume_training: False
 
 model:
   backbone: 'reset50'
+  head_name: 'DeepLabV3Plus'
 
 Train:
   dataset:
