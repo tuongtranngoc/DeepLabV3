@@ -7,7 +7,7 @@ import sys
 
 from loguru import logger
 
-from . import cfg
+from src import config as cfg
 
 
 def set_logger_tag(logger, tag):

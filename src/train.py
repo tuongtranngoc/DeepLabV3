@@ -51,7 +51,7 @@ class Trainer:
         for epoch in range(self.start_epoch, self.args.epochs):
             mt_loss = AverageMeter()
 
-            for bz, (images, labels, __) in enumerate(self.train_loader):
+            for bz, (images, labels, idxs) in enumerate(self.train_loader):
                 self.model.train()
                 images = DataUtils.to_device(images)
                 labels = DataUtils.to_device(labels.long())
@@ -93,7 +93,8 @@ class Trainer:
 
             # Debug after each training epoch
             if self.args.debug_mode:
-                pass
+                Visualizer.debug_output(self.train_dataset, cfg['Debug']['debug_idxs'], self.model, mode='Train')
+                Visualizer.debug_output(self.valid_dataset, cfg['Debug']['debug_idxs'], self.model, mode='Val')
 
 
     def save_ckpt(self, save_path, best_mIoU, epoch):

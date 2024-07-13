@@ -37,7 +37,7 @@ class DeepLabV3Evaluate:
             'eval_loss': AverageMeter(),
             'eval_mIoU': AverageMeter()
         }
-        mIoU_mt = MeanIoU(num_classes=self.args.num_classes, include_background=False, per_class=True)
+        mIoU_mt = MeanIoU(num_classes=self.args.num_classes, include_background=False, per_class=False)
         self.model.eval()
 
         for i, (images, labels, idxs) in enumerate(self.dataloader):

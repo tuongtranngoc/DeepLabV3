@@ -3,7 +3,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 
-from . import cfg
+from src import config as cfg
 from torch.utils.tensorboard import SummaryWriter
 
 class Tensorboard:
