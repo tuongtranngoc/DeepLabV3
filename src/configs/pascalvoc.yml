@@ -36,7 +36,7 @@ Val:
   shuffle: False
   num_workers: 4
   pin_memory: True
-  eval_step: 1
+  eval_step: 5
   dataset:
     name: pascalvoc
     num_classes: 21

@@ -19,12 +19,6 @@ class TransformDeepLabv3(object):
             ToTensorV2()
         ])
 
-        self._augment = A.Compose([
-            A.HorizontalFlip(p=0.5),
-            A.Rotate(limit=(-15, 15), p=0.5),
-            A.VerticalFlip(p=0.5),
-        ], p=0.5)
-
     def transform(self, image, mask):
         transformed = self._transform(image=image, mask=mask)
         transformed_image = transformed['image']
@@ -32,7 +26,15 @@ class TransformDeepLabv3(object):
         return transformed_image, transformed_mask
     
     def augment(self, image, mask):
-        augmented = self._augment(image=image, mask=mask)
+        H, W = image.shape[:2]
+        crop_size = np.random.randint(min(H, W)//2, min(H, W))
+        do_augment = A.Compose([
+            A.RandomCrop(width=crop_size, height=crop_size),
+            A.HorizontalFlip(p=0.5),
+            A.Rotate(limit=(-15, 15), p=0.5),
+            A.VerticalFlip(p=0.5),
+        ], p=0.5)
+        augmented = do_augment(image=image, mask=mask)
         augmented_image = augmented['image']
         augmented_mask = augmented['mask']
 

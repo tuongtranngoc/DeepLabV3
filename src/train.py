@@ -15,7 +15,7 @@ from src.utils.metrics import AverageMeter
 from src.utils.tensorboard import Tensorboard
 from src.evaluate import DeepLabV3Evaluate
 
-from src.models.heads import convert_to_separable_conv
+from src.models.heads.deeplabv3 import convert_to_separable_conv
 from src.models.utils import set_bn_momentum
 from src.models.deeplabv3 import DeepLabV3
 from src.data.pascalvoc2012 import VocDataset
@@ -127,7 +127,6 @@ class Trainer:
         self.model.load_state_dict(ckpt['model'])
 
         return start_epoch
-
 
 
 def cli():

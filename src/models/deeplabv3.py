@@ -1,5 +1,5 @@
 from src.models.utils import IntermediateLayerGetter
-from src.models.heads import DeepLabHead, DeepLabHeadV3Plus
+from src.models.heads.deeplabv3 import DeepLabHead, DeepLabHeadV3Plus
 from src.models.backbones.resnet import resnet_feature_extraction
 
 import torch
