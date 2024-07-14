@@ -43,17 +43,17 @@ class DataUtils:
             raise Exception(f"{image} is a type of {type(image)}, not numpy/tensor type")
     
     @classmethod
-    def to_device(cls, data):
+    def to_device(cls, data, dtype=None):
         if isinstance(data, torch.Tensor):
-            return data.to(cfg['device'])
+            return data.to(cfg['device'], dtype=dtype)
         elif isinstance(data, Tuple) or isinstance(data, List):
             for i, d in enumerate(data):
                 if isinstance(d, torch.Tensor):
-                    data[i] = d.to(cfg['device'])
+                    data[i] = d.to(cfg['device'], dtype=dtype)
                 else:
                     Exception(f"{d} in {data} is not a tensor type")
             return data
         elif isinstance(data, torch.nn.Module):
-            return data.to(cfg['device'])
+            return data.to(cfg['device'], dtype=dtype)
         else:
             Exception(f"{data} is not a/tuple/list of tensor type")
