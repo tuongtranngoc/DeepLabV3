@@ -29,7 +29,7 @@ class TransformDeepLabv3(object):
         H, W = image.shape[:2]
         crop_size = np.random.randint(min(H, W)//2, min(H, W))
         do_augment = A.Compose([
-            A.RandomCrop(width=crop_size, height=crop_size),
+            A.CenterCrop(width=crop_size, height=crop_size),
             A.HorizontalFlip(p=0.5),
             A.Rotate(limit=(-15, 15), p=0.5),
             A.VerticalFlip(p=0.5),
