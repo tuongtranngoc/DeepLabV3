@@ -116,7 +116,7 @@ class Trainer:
         }
         logger.info(f"Saving checkpoint to {save_path}")
         torch.save(ckpt_dict, save_path)
-
+    
     def resume_training(self, ckpt):
         self.best_mIoU = ckpt['best_mIoU']
         cur_iter = ckpt['cur_iter'] + 1
