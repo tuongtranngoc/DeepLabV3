@@ -14,6 +14,7 @@ from src.utils.losses import DeepLav3FocalLoss
 from src.utils.metrics import AverageMeter
 from src.utils.tensorboard import Tensorboard
 from src.evaluate import DeepLabV3Evaluate
+from src.utils.schedulers import PolyLR
 
 from src.models.heads import convert_to_separable_conv
 from src.models.utils import set_bn_momentum
@@ -26,7 +27,8 @@ set_logger_tag(logger, tag="TRAINING")
 class Trainer:
     def __init__(self, args) -> None:
         self.args = args
-        self.start_epoch = 1
+        self.start_iter = 0
+        self.start_epoch = 0
         self.best_mIoU = 0.0
         self.create_data_loader()
         self.create_model()
@@ -55,14 +57,15 @@ class Trainer:
                 {'params': self.model.classifier.parameters(), 'lr': self.args.lr},
             ], lr=self.args.lr, momentum=0.9, weight_decay=self.args.weight_decay)
         
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=self.args.step_size, gamma=0.1)
+        self.scheduler = PolyLR(self.optimizer, max_iters=self.args.total_itrs, power=0.9)
 
     def train(self):
-        for epoch in range(self.start_epoch, self.args.epochs):
+        while self.start_iter <= self.args.total_itrs:
             mt_loss = AverageMeter()
-
-            for bz, (images, labels, idxs) in enumerate(self.train_loader):
+            self.start_epoch += 1
+            for bz, (images, labels, __) in enumerate(self.train_loader):
                 self.model.train()
+                self.start_iter += 1
                 images = DataUtils.to_device(images, torch.float32)
                 labels = DataUtils.to_device(labels, torch.long)
 
@@ -73,66 +76,60 @@ class Trainer:
 
                 loss.backward()
                 self.optimizer.step()
-                self.scheduler.step()
                 mt_loss.update(loss.item())
 
-                print(f"Epoch {epoch} - batch {bz+1}/{len(self.train_loader)}, loss: {mt_loss.get_value(): .5f}", end='\r')
+                print(f"Epoch {self.start_epoch} - batch {bz+1}/{len(self.train_loader)}, loss: {mt_loss.get_value(): .5f}", end='\r')
 
-                Tensorboard.add_scalars('train_loss', epoch,
-                                        loss=mt_loss.get_value('mean'))
+                Tensorboard.add_scalars('train_loss', self.start_iter, loss=mt_loss.get_value('mean'))
 
-            logger.info(f"Epoch: {epoch} - loss: {mt_loss.get_value('mean'): .5f}")
+                if self.start_iter % self.args.eval_step == 0:
+                    metrics = self.evaluate._eval()
+                    Tensorboard.add_scalars("eval_loss", self.start_iter, loss=metrics['eval_loss'].get_value('mean'))
+                    Tensorboard.add_scalars("eval_meanIoU", self.start_iter, mIoU=metrics['eval_mIoU'].get_value('mean'))
 
-            if epoch % self.args.eval_step == 0:
-                metrics = self.evaluate._eval()
-                Tensorboard.add_scalars("eval_loss", epoch,
-                                        loss=metrics['eval_loss'].get_value('mean'))
-                Tensorboard.add_scalars("eval_meanIoU", epoch,
-                                        mIoU=metrics['eval_mIoU'].get_value('mean'))
+                    # Save best checkpoint
+                    current_mIoU = metrics['eval_mIoU'].get_value('mean')
+                    if current_mIoU > self.best_mIoU:
+                        self.best_mIoU = current_mIoU
+                        best_ckpt_pth = os.path.join(cfg['Debug']['ckpt_dirpath'], self.args.backbone + '_' + self.args.head_name, 'best.pt')
+                        self.save_ckpt(best_ckpt_pth, self.best_mIoU, self.start_iter)
 
-                # Save best checkpoint
-                current_mIoU = metrics['eval_mIoU'].get_value('mean')
-                if current_mIoU > self.best_mIoU:
-                    self.best_mIoU = current_mIoU
-                    best_ckpt_pth = os.path.join(cfg['Debug']['ckpt_dirpath'], self.args.backbone + '_' + self.args.head_name, 'best.pt')
-                    self.save_ckpt(best_ckpt_pth, self.best_mIoU, epoch)
+                    # Save last checkpoint
+                    last_ckpt_path = os.path.join(cfg['Debug']['ckpt_dirpath'], self.args.backbone  + '_' + self.args.head_name, 'last.pt')
+                    self.save_ckpt(last_ckpt_path, self.best_mIoU, self.start_iter)
 
-            # Save last checkpoint
-            last_ckpt_path = os.path.join(cfg['Debug']['ckpt_dirpath'], self.args.backbone  + '_' + self.args.head_name, 'last.pt')
-            self.save_ckpt(last_ckpt_path, self.best_mIoU, epoch)
+                # Debug after each training epoch
+                if self.args.debug_mode:
+                    Visualizer.debug_output(self.train_dataset, cfg['Debug']['debug_idxs'], self.model, mode='Train')
+                    Visualizer.debug_output(self.valid_dataset, cfg['Debug']['debug_idxs'], self.model, mode='Val')
 
-            # Debug after each training epoch
-            if self.args.debug_mode:
-                Visualizer.debug_output(self.train_dataset, cfg['Debug']['debug_idxs'], self.model, mode='Train')
-                Visualizer.debug_output(self.valid_dataset, cfg['Debug']['debug_idxs'], self.model, mode='Val')
+                self.scheduler.step()
 
-
-    def save_ckpt(self, save_path, best_mIoU, epoch):
+    def save_ckpt(self, save_path, best_mIoU, cur_iter):
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         ckpt_dict = {
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "scheduler": self.scheduler.state_dict(),
             "best_mIoU": best_mIoU,
-            "epoch": epoch,
+            "cur_iter": cur_iter,
         }
         logger.info(f"Saving checkpoint to {save_path}")
         torch.save(ckpt_dict, save_path)
-
+    
     def resume_training(self, ckpt):
         self.best_mIoU = ckpt['best_mIoU']
-        start_epoch = ckpt['epoch'] + 1
+        cur_iter = ckpt['cur_iter'] + 1
         self.optimizer.load_state_dict(ckpt['optimizer'])
         self.scheduler.load_state_dict(ckpt['scheduler'])
         self.model.load_state_dict(ckpt['model'])
 
-        return start_epoch
-
+        return cur_iter
 
 
 def cli():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", default=cfg['Train']['epochs'], type=int)
+    parser.add_argument("--total_itrs", default=cfg['Train']['total_itrs'], type=int)
     parser.add_argument("--eval_step", default=cfg['Val']['eval_step'], type=int)
     parser.add_argument("--device", default=cfg['device'], type=str)
     parser.add_argument("--batch_size", default=cfg['Train']['batch_size'], type=int)
@@ -148,7 +145,6 @@ def cli():
     parser.add_argument("--gamma", default=cfg['model']['gamma'], type=float)
     parser.add_argument("--debug_mode", default=cfg['Debug']['debug_mode'], type=bool)
     parser.add_argument("--weight_decay", default=cfg['Train']['weight_decay'], type=float)
-    parser.add_argument("--step_size", default=cfg["Train"]["step_size"], type=float)
 
     args = parser.parse_args()
     return args

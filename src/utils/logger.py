@@ -15,7 +15,7 @@ def set_logger_tag(logger, tag):
 
 
 logfile = f'{os.path.join(cfg["Debug"]["log_dir"], cfg["model"]["backbone"])}' + '_' + '{time:YYYY-MM-DD}.log'
-set_logger_tag(logger, 'DB')
+set_logger_tag(logger, 'NOTAG')
 
 logger_format = (
     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
