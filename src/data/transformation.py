@@ -15,28 +15,24 @@ class TransformDeepLabv3(object):
         self.image_shape = cfg['Train']['transforms']['image_shape']
         self._transform = A.Compose([
             A.Resize(self.image_shape[1], self.image_shape[2]),
-            A.Normalize(always_apply=True),
+            A.Normalize(),
             ToTensorV2()
         ])
+
+        self._augment = A.Compose([
+            A.HorizontalFlip(p=0.5),
+            A.Rotate(limit=(-15, 15), p=0.5),
+            A.VerticalFlip(p=0.5),
+        ], p=0.5)
 
     def transform(self, image, mask):
         transformed = self._transform(image=image, mask=mask)
         transformed_image = transformed['image']
         transformed_mask = transformed['mask']
-
         return transformed_image, transformed_mask
     
     def augment(self, image, mask):
-        h, w = image.shape[:2]
-        _augment = A.Compose([
-            A.RandomCrop(height=min(h, 256), width=min(w, 256)),
-            A.HorizontalFlip(p=0.5),
-            A.RandomBrightnessContrast(p=0.2),
-            A.VerticalFlip(p=0.5),
-            A.MedianBlur(p=0.1, blur_limit=5),
-            A.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=20, val_shift_limit=20, p=0.3),
-        ], p=0.5)
-        augmented = _augment(image=image, mask=mask)
+        augmented = self._augment(image=image, mask=mask)
         augmented_image = augmented['image']
         augmented_mask = augmented['mask']
 

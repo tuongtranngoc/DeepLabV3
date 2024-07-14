@@ -10,11 +10,13 @@ from src import config as cfg
 from src.utils.data_utils import DataUtils
 from src.utils.visualization import Visualizer
 from src.utils.logger import logger, set_logger_tag
-from src.utils.losses import DeepLabv3Loss
+from src.utils.losses import DeepLav3FocalLoss
 from src.utils.metrics import AverageMeter
 from src.utils.tensorboard import Tensorboard
 from src.evaluate import DeepLabV3Evaluate
 
+from src.models.heads import convert_to_separable_conv
+from src.models.utils import set_bn_momentum
 from src.models.deeplabv3 import DeepLabV3
 from src.data.pascalvoc2012 import VocDataset
 
@@ -28,7 +30,7 @@ class Trainer:
         self.best_mIoU = 0.0
         self.create_data_loader()
         self.create_model()
-        self.evaluate = DeepLabV3Evaluate(args, self.valid_dataset, self.model)
+        self.evaluate = DeepLabV3Evaluate(self.valid_dataset, self.model)
 
     def create_data_loader(self):
         self.train_dataset = VocDataset(mode='Train')
@@ -43,9 +45,17 @@ class Trainer:
         self.model = DeepLabV3(head_name=self.args.head_name, 
                                backbone_name=self.args.backbone,
                                num_classes=self.args.num_classes,
-                               output_stride=self.args.output_stride).to(self.args.device)
-        self.loss_func = DeepLabv3Loss(alpha=self.args.alpha, gamma=self.args.gamma).to(self.args.device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.args.lr)
+                               output_stride=self.args.output_stride)
+        convert_to_separable_conv(self.model.classifier)
+        set_bn_momentum(self.model.backbone, momentum=0.01)
+        self.model.to(self.args.device)
+        self.loss_func = DeepLav3FocalLoss(alpha=self.args.alpha, gamma=self.args.gamma).to(self.args.device)
+        self.optimizer = torch.optim.SGD(params=[
+                {'params': self.model.backbone.parameters(), 'lr': 0.1 * self.args.lr},
+                {'params': self.model.classifier.parameters(), 'lr': self.args.lr},
+            ], lr=self.args.lr, momentum=0.9, weight_decay=self.args.weight_decay)
+        
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=self.args.step_size, gamma=0.1)
 
     def train(self):
         for epoch in range(self.start_epoch, self.args.epochs):
@@ -53,17 +63,17 @@ class Trainer:
 
             for bz, (images, labels, idxs) in enumerate(self.train_loader):
                 self.model.train()
-                images = DataUtils.to_device(images)
-                labels = DataUtils.to_device(labels.long())
+                images = DataUtils.to_device(images, torch.float32)
+                labels = DataUtils.to_device(labels, torch.long)
 
+                self.optimizer.zero_grad()
                 outs = self.model(images)
 
                 loss = self.loss_func(outs, labels)
 
-                self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-
+                self.scheduler.step()
                 mt_loss.update(loss.item())
 
                 print(f"Epoch {epoch} - batch {bz+1}/{len(self.train_loader)}, loss: {mt_loss.get_value(): .5f}", end='\r')
@@ -102,6 +112,7 @@ class Trainer:
         ckpt_dict = {
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
+            "scheduler": self.scheduler.state_dict(),
             "best_mIoU": best_mIoU,
             "epoch": epoch,
         }
@@ -112,6 +123,7 @@ class Trainer:
         self.best_mIoU = ckpt['best_mIoU']
         start_epoch = ckpt['epoch'] + 1
         self.optimizer.load_state_dict(ckpt['optimizer'])
+        self.scheduler.load_state_dict(ckpt['scheduler'])
         self.model.load_state_dict(ckpt['model'])
 
         return start_epoch
@@ -135,6 +147,8 @@ def cli():
     parser.add_argument("--alpha", default=cfg['model']['alpha'], type=float)
     parser.add_argument("--gamma", default=cfg['model']['gamma'], type=float)
     parser.add_argument("--debug_mode", default=cfg['Debug']['debug_mode'], type=bool)
+    parser.add_argument("--weight_decay", default=cfg['Train']['weight_decay'], type=float)
+    parser.add_argument("--step_size", default=cfg["Train"]["step_size"], type=float)
 
     args = parser.parse_args()
     return args
