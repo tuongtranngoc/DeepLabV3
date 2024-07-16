@@ -10,7 +10,7 @@ model:
   gamma: 2.0
 
 Train:
-  batch_size: 12
+  batch_size: 14
   shuffle: True
   num_workers: 8
   pin_memory: True

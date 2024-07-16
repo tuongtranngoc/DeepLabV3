@@ -4,7 +4,7 @@ import torch.nn as nn
 
 
 model_weights = {
-    'resnet50': 'ResNet50_Weights.IMAGENET1K_V1',
+    'resnet50': 'ResNet50_Weights.IMAGENET1K_V2',
     'resnet101': 'ResNet101_Weights.IMAGENET1K_V1',
     'resnet152': 'ResNet152_Weights.IMAGENET1K_V1',
     'resnet50_32x4d': 'ResNeXt50_32X4D_Weights.IMAGENET1K_V1',

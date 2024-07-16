@@ -38,7 +38,6 @@ class DeepLabV3(nn.Module):
             self.classifier = DeepLabHead(inplanes, num_classes, aspp_dilate)
         self.backbone = IntermediateLayerGetter(backbone, return_layers=return_layers)
 
-
     def forward(self, x: torch.Tensor):
         input_shape = x.shape[-2:]
         features = self.backbone(x)

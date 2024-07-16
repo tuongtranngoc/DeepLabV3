@@ -6,7 +6,6 @@ import numpy as np
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-
 from src import config as cfg
 
 
@@ -32,7 +31,6 @@ class TransformDeepLabv3(object):
             A.CenterCrop(width=crop_size, height=crop_size),
             A.HorizontalFlip(p=0.5),
             A.Rotate(limit=(-15, 15), p=0.5),
-            A.VerticalFlip(p=0.5),
         ], p=0.5)
         augmented = do_augment(image=image, mask=mask)
         augmented_image = augmented['image']

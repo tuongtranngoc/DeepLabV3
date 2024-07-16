@@ -7,19 +7,19 @@ from torch.utils.data import DataLoader
 
 from src import config as cfg
 
-from src.utils.data_utils import DataUtils
 from src.utils.visualization import Visualizer
-from src.utils.logger import logger, set_logger_tag
 from src.utils.losses import DeepLav3FocalLoss
-from src.utils.metrics import AverageMeter
 from src.utils.tensorboard import Tensorboard
+from src.utils.data_utils import DataUtils
+from src.utils.metrics import AverageMeter
 from src.evaluate import DeepLabV3Evaluate
 from src.utils.schedulers import PolyLR
 
 from src.models.heads import convert_to_separable_conv
+from src.utils.logger import logger, set_logger_tag
 from src.models.utils import set_bn_momentum
-from src.models.deeplabv3 import DeepLabV3
 from src.data.pascalvoc2012 import VocDataset
+from src.models.deeplabv3 import DeepLabV3
 
 set_logger_tag(logger, tag="TRAINING")
 
@@ -53,11 +53,11 @@ class Trainer:
         self.model.to(self.args.device)
         self.loss_func = DeepLav3FocalLoss(alpha=self.args.alpha, gamma=self.args.gamma).to(self.args.device)
         self.optimizer = torch.optim.SGD(params=[
-                {'params': self.model.backbone.parameters(), 'lr': 0.1 * self.args.lr},
+                {'params': self.model.backbone.parameters(), 'lr': self.args.lr},
                 {'params': self.model.classifier.parameters(), 'lr': self.args.lr},
             ], lr=self.args.lr, momentum=0.9, weight_decay=self.args.weight_decay)
         
-        self.scheduler = PolyLR(self.optimizer, max_iters=self.args.total_itrs, power=0.9)
+        self.scheduler = PolyLR(self.optimizer, max_iters=self.args.total_itrs, power=0.1)
 
     def train(self):
         while self.start_iter <= self.args.total_itrs:
