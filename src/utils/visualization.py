@@ -68,7 +68,7 @@ class Visualizer:
             pad = 20
             x2mask = np.zeros((cls.H, cls.W*2 + pad, cls.C), dtype=np.uint8)
             x2mask[0:cls.H, 0:cls.W] = pred
-            x2mask[0:cls.H, pad + cls.W: cls.W*2] = mask
+            x2mask[0:cls.H, (pad + cls.W): (pad + cls.W*2)] = mask
 
             cv2.imwrite(os.path.join(cfg['Debug'][mode.lower()], f'{i}.png'), x2mask)
 

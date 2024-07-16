@@ -88,14 +88,15 @@ class Trainer:
                     Tensorboard.add_scalars("eval_meanIoU", self.start_iter, mIoU=metrics['eval_mIoU'].get_value('mean'))
 
                     # Save best checkpoint
+                    ckpt_dir = cfg['Debug']['ckpt_dirpath'], self.args.backbone.lower() + '_' + self.args.head_name.lower()
                     current_mIoU = metrics['eval_mIoU'].get_value('mean')
                     if current_mIoU > self.best_mIoU:
                         self.best_mIoU = current_mIoU
-                        best_ckpt_pth = os.path.join(cfg['Debug']['ckpt_dirpath'], self.args.backbone + '_' + self.args.head_name, 'best.pt')
+                        best_ckpt_pth = os.path.join(ckpt_dir, 'best.pt')
                         self.save_ckpt(best_ckpt_pth, self.best_mIoU, self.start_iter)
 
                     # Save last checkpoint
-                    last_ckpt_path = os.path.join(cfg['Debug']['ckpt_dirpath'], self.args.backbone  + '_' + self.args.head_name, 'last.pt')
+                    last_ckpt_path = os.path.join(ckpt_dir, 'last.pt')
                     self.save_ckpt(last_ckpt_path, self.best_mIoU, self.start_iter)
 
                 # Debug after each training epoch

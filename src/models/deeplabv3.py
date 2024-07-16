@@ -16,7 +16,7 @@ class DeepLabV3(nn.Module):
         for i in range(1, 3):
             backbone.layer4[i].conv2.padding = (2, 2)
             backbone.layer4[i].conv2.dilation = (2, 2)
-
+        
         if output_stride == 8:
             aspp_dilate = [12, 24, 36]
         else:
