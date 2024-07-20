@@ -7,11 +7,11 @@ from torch.utils.data import DataLoader
 
 from src import config as cfg
 
+from src.utils.metrics import AverageMeter, MeanIoU
 from src.utils.visualization import Visualizer
 from src.utils.losses import DeepLav3FocalLoss
 from src.utils.tensorboard import Tensorboard
 from src.utils.data_utils import DataUtils
-from src.utils.metrics import AverageMeter
 from src.evaluate import DeepLabV3Evaluate
 from src.utils.schedulers import PolyLR
 
@@ -49,8 +49,8 @@ class Trainer:
                                num_classes=self.args.num_classes,
                                output_stride=self.args.output_stride)
         
-        set_bn_momentum(self.model.backbone, momentum=0.01)
         convert_to_separable_conv(self.model.classifier)
+        set_bn_momentum(self.model.backbone, momentum=0.01)
         self.model.to(self.args.device)
         self.loss_func = DeepLav3FocalLoss(alpha=self.args.alpha, gamma=self.args.gamma).to(self.args.device)
         self.optimizer = torch.optim.SGD(params=[

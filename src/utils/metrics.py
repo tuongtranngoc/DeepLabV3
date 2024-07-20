@@ -65,6 +65,9 @@ def _compute_intersection_and_union(
 
 
 class MeanIoU(Metric):
+    """Fix bug: Segmentation metric
+    Reference: https://github.com/Lightning-AI/torchmetrics/issues/2558
+    """
     def __init__(
         self,
         num_classes: int,

@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src import config as cfg
-from src.utils.metrics import AverageMeter, SegMetrics
+from src.utils.metrics import AverageMeter, MeanIoU
 from src.utils.losses import DeepLav3FocalLoss
 from src.utils.data_utils import DataUtils
 from src.utils.logger import set_logger_tag, logger
@@ -31,7 +31,7 @@ class DeepLabV3Evaluate:
                                      shuffle=self.args.shuffle,
                                      num_workers=self.args.num_workers,
                                      pin_memory=self.args.pin_memory)
-        self.mIoU_mt = SegMetrics(n_classes=self.args.num_classes)
+        self.mIoU_mt = MeanIoU(num_classes=self.args.num_classes)
 
     def _eval(self):
         metrics = {
@@ -47,13 +47,15 @@ class DeepLabV3Evaluate:
                 
                 outs = self.model(images)
                 loss = self.loss_func(outs, labels)
-                preds = outs.max(dim=1)[1].detach().cpu().numpy()
-                targets = labels.detach().cpu().numpy()
+                preds = outs.max(dim=1)[1].detach().cpu()
+                targets = labels.detach().cpu()
+                ignore_idxs = torch.where(targets==255)
+                targets[ignore_idxs] = 0
                 metrics['eval_loss'].update(loss.item())
-                self.mIoU_mt.update(targets, preds)
+                self.mIoU_mt.update(preds, targets)
             
-            mIoU = self.mIoU_mt.get_results()
-            metrics['eval_mIoU'].update(mIoU['Mean IoU'])
+            mIoU = self.mIoU_mt.compute()
+            metrics['eval_mIoU'].update(mIoU)
             logger.info(f'loss: {metrics["eval_loss"].get_value("mean"): .5f}, Mean IoU: {metrics["eval_mIoU"].get_value("mean"): .5f}')
         return metrics
 
