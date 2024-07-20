@@ -8,7 +8,7 @@ from tqdm import tqdm
 def test_vocdataset():
     dataset = VocDataset(mode='Train')
     for i in tqdm(range(10)):
-        image, mask = dataset[i]
+        image, mask, __ = dataset[i]
         image = DataUtils.image_to_numpy(image)
         mask = DataUtils.image_to_numpy(mask)
         Visualizer.save_debug(image, cfg['Debug']['dataset'], f'{i}.png')

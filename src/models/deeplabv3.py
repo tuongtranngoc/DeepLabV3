@@ -16,7 +16,7 @@ class DeepLabV3(nn.Module):
         for i in range(1, 3):
             backbone.layer4[i].conv2.padding = (2, 2)
             backbone.layer4[i].conv2.dilation = (2, 2)
-
+        
         if output_stride == 8:
             aspp_dilate = [12, 24, 36]
         else:
@@ -37,7 +37,6 @@ class DeepLabV3(nn.Module):
             }
             self.classifier = DeepLabHead(inplanes, num_classes, aspp_dilate)
         self.backbone = IntermediateLayerGetter(backbone, return_layers=return_layers)
-
 
     def forward(self, x: torch.Tensor):
         input_shape = x.shape[-2:]

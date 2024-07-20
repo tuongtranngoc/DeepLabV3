@@ -51,7 +51,7 @@ class DeepLabV3Evaluate:
                 targets = labels.detach().cpu().numpy()
                 metrics['eval_loss'].update(loss.item())
                 self.mIoU_mt.update(targets, preds)
-
+            
             mIoU = self.mIoU_mt.get_results()
             metrics['eval_mIoU'].update(mIoU['Mean IoU'])
             logger.info(f'loss: {metrics["eval_loss"].get_value("mean"): .5f}, Mean IoU: {metrics["eval_mIoU"].get_value("mean"): .5f}')

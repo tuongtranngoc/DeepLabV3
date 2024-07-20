@@ -3,7 +3,13 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 
+from typing import Any, Literal
+
+import torch
 import numpy as np
+from torch import Tensor
+from torchmetrics import Metric
+
 
 class AverageMeter(object):
     """Calculate average/sum value after each time
@@ -32,80 +38,68 @@ class AverageMeter(object):
            return self.value
         
 
-class BaseMetrics(object):
-    def __init__(self):
-        """ Overridden by subclasses """
-        raise NotImplementedError()
+def _compute_intersection_and_union(
+    preds: Tensor,
+    target: Tensor,
+    num_classes: int,
+    include_background: bool = False,
+    input_format: Literal["one-hot", "index", "predictions"] = "index",
+) -> tuple[Tensor, Tensor]:
+    if input_format in ["index", "predictions"]:
+        if input_format == "predictions":
+            preds = preds.argmax(1)
+        preds = torch.nn.functional.one_hot(preds, num_classes=num_classes)
+        target = torch.nn.functional.one_hot(target, num_classes=num_classes)
 
-    def update(self, gt, pred):
-        """ Overridden by subclasses """
-        raise NotImplementedError()
+    if not include_background:
+        preds[..., 0] = 0
+        target[..., 0] = 0
 
-    def get_results(self):
-        """ Overridden by subclasses """
-        raise NotImplementedError()
+    reduce_axis = list(range(1, preds.ndim - 1))
+    intersection = torch.sum(torch.logical_and(preds, target), dim=reduce_axis)
+    target_sum = torch.sum(target, dim=reduce_axis)
+    pred_sum = torch.sum(preds, dim=reduce_axis)
+    union = target_sum + pred_sum - intersection
 
-    def to_str(self, metrics):
-        """ Overridden by subclasses """
-        raise NotImplementedError()
+    return intersection, union
 
-    def reset(self):
-        """ Overridden by subclasses """
-        raise NotImplementedError()      
 
-class SegMetrics(BaseMetrics):
-    """
-    Metrics for Semantic Segmentation Task
-    """
-    def __init__(self, n_classes):
-        self.n_classes = n_classes
-        self.confusion_matrix = np.zeros((n_classes, n_classes))
+class MeanIoU(Metric):
+    def __init__(
+        self,
+        num_classes: int,
+        include_background: bool = True,
+        per_class: bool = False,
+        input_format: Literal["one-hot", "index", "predictions"] = "index",
+        **kwargs: Any,
+    ) -> None:
+        Metric.__init__(self, **kwargs)
 
-    def update(self, label_trues, label_preds):
-        for lt, lp in zip(label_trues, label_preds):
-            self.confusion_matrix += self._fast_hist( lt.flatten(), lp.flatten() )
+        self.num_classes = num_classes
+        self.include_background = include_background
+        self.per_class = per_class
+        self.input_format = input_format
+
+        self.add_state("intersection", default=torch.zeros(num_classes), dist_reduce_fx="sum")
+        self.add_state("union", default=torch.zeros(num_classes), dist_reduce_fx="sum")
+
+    def update(self, preds: Tensor, target: Tensor) -> None:
+        intersection, union = _compute_intersection_and_union(
+            preds, target, self.num_classes, self.include_background, self.input_format
+        )
+        self.intersection += intersection.sum(0)
+        self.union += union.sum(0)
     
-    @staticmethod
-    def to_str(results):
-        string = "\n"
-        for k, v in results.items():
-            if k!="Class IoU":
-                string += "%s: %f\n"%(k, v)
-        
-        return string
+    def compute(self) -> Tensor:
+        iou_valid = torch.gt(self.union, 0)
 
-    def _fast_hist(self, label_true, label_pred):
-        mask = (label_true >= 0) & (label_true < self.n_classes)
-        hist = np.bincount(
-            self.n_classes * label_true[mask].astype(int) + label_pred[mask],
-            minlength=self.n_classes ** 2,
-        ).reshape(self.n_classes, self.n_classes)
-        return hist
+        iou = torch.where(
+            iou_valid,
+            torch.divide(self.intersection, self.union),
+            torch.nan,
+        )
 
-    def get_results(self):
-        """Returns accuracy score evaluation result.
-            - overall accuracy
-            - mean accuracy
-            - mean IU
-            - fwavacc
-        """
-        hist = self.confusion_matrix
-        acc = np.diag(hist).sum() / hist.sum()
-        acc_cls = np.diag(hist) / hist.sum(axis=1)
-        acc_cls = np.nanmean(acc_cls)
-        iu = np.diag(hist) / (hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist))
-        mean_iu = np.nanmean(iu)
-        freq = hist.sum(axis=1) / hist.sum()
-        fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
-        cls_iu = dict(zip(range(self.n_classes), iu))
-
-        return {
-                "Overall Acc": acc,
-                "Mean Acc": acc_cls,
-                "FreqW Acc": fwavacc,
-                "Mean IoU": mean_iu,
-                "Class IoU": cls_iu,
-            }
-        
-    def reset(self):
-        self.confusion_matrix = np.zeros((self.n_classes, self.n_classes))
+        if self.per_class:
+            return iou
+        else:
+            return torch.mean(iou[iou_valid])
