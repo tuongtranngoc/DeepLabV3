@@ -4,17 +4,22 @@ import glob
 import argparse
 
 import torch
+import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
 
 from src import config as cfg
 from src.models.deeplabv3 import DeepLabV3
-from src.utils.data_utils import DataUtils
 from src.data.pascalvoc2012 import VocDataset
-from src.data.transformation import TransformDeepLabv3
+from src.utils.data_utils import DataUtils
 from src.utils.logger import set_logger_tag, logger
+from src.data.transformation import TransformDeepLabv3
+from src.utils.logger import logger, set_logger_tag
+from src.models.heads import convert_to_separable_conv
+from src.utils.visualization import Visualizer
 
 set_logger_tag(logger, tag="PREDICTING")
+
 
 class Predictor:
     def __init__(self, args):
@@ -23,6 +28,7 @@ class Predictor:
                                backbone_name=self.args.backbone,
                                num_classes=self.args.num_classes,
                                output_stride=self.args.out_stride)
+        convert_to_separable_conv(self.model.classifier)
         ckpt_path = os.path.join(cfg["Debug"]["ckpt_dirpath"], 
                                  self.args.backbone.lower() + "_" +
                                  self.args.head_name.lower(),
@@ -33,15 +39,17 @@ class Predictor:
         else:
             logger.warning(f"Not exist checkpoint path")
         
-        self.model.to(self.args.device)
+        self.model.to(self.args.device).eval()
         self.transfom = TransformDeepLabv3()
 
     def predict(self, image_path):
         image = cv2.imread(image_path)
         transformed_img = self.transfom._transform(image=image[..., ::-1])['image']
-        transformed_img = transformed_img.to(self.args.device)
-        mask = self.model(transformed_img)
-
+        transformed_img = transformed_img.unsqueeze(0).to(self.args.device)
+        mask = self.model(transformed_img).max(dim=1)[1].detach().cpu().numpy().astype(np.uint8)
+        image_np = DataUtils.image_to_numpy(transformed_img)
+        Visualizer.visualize(image_np, mask, image_path)
+        
 
 def cli():
     parser = argparse.ArgumentParser()

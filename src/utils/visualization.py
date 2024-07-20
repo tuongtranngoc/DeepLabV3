@@ -30,6 +30,7 @@ def voc_cmap(N=256, normalized=False):
     return cmap
 
 class Visualizer:
+    num_classes = cfg['Train']['dataset']['num_classes']
     device = cfg['device']
     C, H, W = cfg['Train']['transforms']['image_shape']
     cmap = voc_cmap()
@@ -71,6 +72,50 @@ class Visualizer:
             x2mask[0:cls.H, (pad + cls.W): (pad + cls.W*2)] = mask
 
             cv2.imwrite(os.path.join(cfg['Debug'][mode.lower()], f'{i}.png'), x2mask)
+    
+    @classmethod
+    def visualize(cls, image, result, image_path, weight=0.8, save_dir=None):
+        color_map = cls.get_mask_color()
+        color_map = [color_map[i:i + 3] for i in range(0, len(color_map), 3)]
+        color_map = np.array(color_map).astype("uint8")
+
+        vis_result = image.copy()
+        for i in range(result.shape[0]):
+            mask = result[i]
+            c1 = np.where(mask, color_map[i, 0], vis_result[..., 0])
+            c2 = np.where(mask, color_map[i, 1], vis_result[..., 1])
+            c3 = np.where(mask, color_map[i, 2], vis_result[..., 2])
+            pseudo_img = np.dstack((c3, c2, c1)).astype('uint8')
+
+            contour, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            vis_result = cv2.addWeighted(vis_result, weight, pseudo_img, 1 - weight, 0)
+            contour_color = (int(color_map[i, 0]), int(color_map[i, 1]), int(color_map[i, 2]))
+            vis_result = cv2.drawContours(vis_result, contour, -1, contour_color, 1)
+
+        if save_dir is not None:
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+        else:
+            save_dir = cfg['Debug']['prediction']
+            os.makedirs(save_dir, exist_ok=True)
+        image_name = os.path.split(image_path)[-1]
+        out_path = os.path.join(save_dir, image_name)
+        cv2.imwrite(out_path, vis_result)
 
 
+    @classmethod
+    def get_mask_color(cls):
+        num_classes = cls.num_classes + 1
+        color_map = num_classes * [0, 0, 0]
+        for i in range(0, num_classes):
+            j = 0
+            lab = i
+            while lab:
+                color_map[i * 3] |= (((lab >> 0) & 1) << (7 - j))
+                color_map[i * 3 + 1] |= (((lab >> 1) & 1) << (7 - j))
+                color_map[i * 3 + 2] |= (((lab >> 2) & 1) << (7 - j))
+                j += 1
+                lab >>= 3
+        color_map = color_map[3:]
+        return color_map
 

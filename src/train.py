@@ -48,8 +48,9 @@ class Trainer:
                                backbone_name=self.args.backbone,
                                num_classes=self.args.num_classes,
                                output_stride=self.args.output_stride)
-        convert_to_separable_conv(self.model.classifier)
+        
         set_bn_momentum(self.model.backbone, momentum=0.01)
+        convert_to_separable_conv(self.model.classifier)
         self.model.to(self.args.device)
         self.loss_func = DeepLav3FocalLoss(alpha=self.args.alpha, gamma=self.args.gamma).to(self.args.device)
         self.optimizer = torch.optim.SGD(params=[
@@ -68,7 +69,6 @@ class Trainer:
                 self.start_iter += 1
                 images = DataUtils.to_device(images, torch.float32)
                 labels = DataUtils.to_device(labels, torch.long)
-
                 self.optimizer.zero_grad()
                 outs = self.model(images)
 
@@ -88,7 +88,7 @@ class Trainer:
                     Tensorboard.add_scalars("eval_meanIoU", self.start_iter, mIoU=metrics['eval_mIoU'].get_value('mean'))
 
                     # Save best checkpoint
-                    ckpt_dir = cfg['Debug']['ckpt_dirpath'], self.args.backbone.lower() + '_' + self.args.head_name.lower()
+                    ckpt_dir = os.path.join(cfg['Debug']['ckpt_dirpath'], self.args.backbone.lower() + '_' + self.args.head_name.lower())
                     current_mIoU = metrics['eval_mIoU'].get_value('mean')
                     if current_mIoU > self.best_mIoU:
                         self.best_mIoU = current_mIoU
