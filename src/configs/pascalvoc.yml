@@ -6,7 +6,7 @@ model:
   backbone: 'resnet50'
   head_name: 'deeplabv3plus'
   output_stride: 16
-  alpha: 1.0
+  alpha: 0.5
   gamma: 2.0
 
 Train:
@@ -32,7 +32,7 @@ Train:
 
 
 Val:
-  batch_size: 1
+  batch_size: 8
   shuffle: False
   num_workers: 4
   pin_memory: False

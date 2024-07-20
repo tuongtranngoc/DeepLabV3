@@ -54,7 +54,7 @@ class Trainer:
         self.model.to(self.args.device)
         self.loss_func = DeepLav3FocalLoss(alpha=self.args.alpha, gamma=self.args.gamma).to(self.args.device)
         self.optimizer = torch.optim.SGD(params=[
-                {'params': self.model.backbone.parameters(), 'lr': 0.1 * self.args.lr},
+                {'params': self.model.backbone.parameters(), 'lr': self.args.lr},
                 {'params': self.model.classifier.parameters(), 'lr': self.args.lr},
             ], lr=self.args.lr, momentum=0.9, weight_decay=self.args.weight_decay)
         

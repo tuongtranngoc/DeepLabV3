@@ -99,7 +99,7 @@ def cli():
     parser.add_argument("--head_name", default=cfg["model"]["head_name"], type=str)
     parser.add_argument("--backbone", default=cfg["model"]["backbone"], type=str)
     parser.add_argument("--num_classes", default=cfg["Train"]["dataset"]["num_classes"], type=int)
-    parser.add_argument("--out_stride", default=cfg["model"]["output_stride"], type=int)
+    parser.add_argument("--output_stride", default=cfg["model"]["output_stride"], type=int)
     parser.add_argument("--model_path", type=str, default=None, help="Path to pytorch model")
     parser.add_argument("--export_format", type=str, default="torchscript", help="Support export formats: torchscript, paddle, TensorRT, ONNX")
     parser.add_argument("--device", type=str, default='cuda', help="Select device for export format")
