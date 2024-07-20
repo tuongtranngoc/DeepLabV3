@@ -11,6 +11,7 @@ from tqdm import tqdm
 from src import config as cfg
 from src.models.deeplabv3 import DeepLabV3
 from src.data.pascalvoc2012 import VocDataset
+from src.models.utils import set_bn_momentum
 from src.utils.data_utils import DataUtils
 from src.utils.logger import set_logger_tag, logger
 from src.data.transformation import TransformDeepLabv3
@@ -29,6 +30,7 @@ class Predictor:
                                num_classes=self.args.num_classes,
                                output_stride=self.args.out_stride)
         convert_to_separable_conv(self.model.classifier)
+        set_bn_momentum(self.model.backbone, momentum=0.01)
         ckpt_path = os.path.join(cfg["Debug"]["ckpt_dirpath"], 
                                  self.args.backbone.lower() + "_" +
                                  self.args.head_name.lower(),
