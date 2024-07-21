@@ -49,8 +49,6 @@ class DeepLabV3Evaluate:
                 loss = self.loss_func(outs, labels)
                 preds = outs.max(dim=1)[1].detach().cpu()
                 targets = labels.detach().cpu()
-                ignore_idxs = torch.where(targets==255)
-                targets[ignore_idxs] = 0
                 metrics['eval_loss'].update(loss.item())
                 self.mIoU_mt.update(preds, targets)
             

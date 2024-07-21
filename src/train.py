@@ -7,9 +7,9 @@ from torch.utils.data import DataLoader
 
 from src import config as cfg
 
+from src.utils.losses import DeepLav3FocalLoss, DeepLabv3CELoss
 from src.utils.metrics import AverageMeter, MeanIoU
 from src.utils.visualization import Visualizer
-from src.utils.losses import DeepLav3FocalLoss
 from src.utils.tensorboard import Tensorboard
 from src.utils.data_utils import DataUtils
 from src.evaluate import DeepLabV3Evaluate
@@ -52,7 +52,7 @@ class Trainer:
         convert_to_separable_conv(self.model.classifier)
         set_bn_momentum(self.model.backbone, momentum=0.01)
         self.model.to(self.args.device)
-        self.loss_func = DeepLav3FocalLoss(alpha=self.args.alpha, gamma=self.args.gamma).to(self.args.device)
+        self.loss_func = DeepLabv3CELoss().to(self.args.device)
         self.optimizer = torch.optim.SGD(params=[
                 {'params': self.model.backbone.parameters(), 'lr': self.args.lr},
                 {'params': self.model.classifier.parameters(), 'lr': self.args.lr},

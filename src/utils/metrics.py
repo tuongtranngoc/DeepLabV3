@@ -42,9 +42,13 @@ def _compute_intersection_and_union(
     preds: Tensor,
     target: Tensor,
     num_classes: int,
+    ignore_index: int = 255,
     include_background: bool = False,
     input_format: Literal["one-hot", "index", "predictions"] = "index",
 ) -> tuple[Tensor, Tensor]:
+    ignore_idxs = torch.where(target==ignore_index)
+    target[ignore_idxs] = 0
+    preds[ignore_idxs] = 0
     if input_format in ["index", "predictions"]:
         if input_format == "predictions":
             preds = preds.argmax(1)
@@ -54,7 +58,7 @@ def _compute_intersection_and_union(
     if not include_background:
         preds[..., 0] = 0
         target[..., 0] = 0
-
+    
     reduce_axis = list(range(1, preds.ndim - 1))
     intersection = torch.sum(torch.logical_and(preds, target), dim=reduce_axis)
     target_sum = torch.sum(target, dim=reduce_axis)
