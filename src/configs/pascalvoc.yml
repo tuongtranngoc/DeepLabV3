@@ -6,7 +6,7 @@ model:
   backbone: 'resnet50'
   head_name: 'deeplabv3plus'
   output_stride: 16
-  alpha: 1.5
+  alpha: 1.0
   gamma: 2.0
 
 Train:

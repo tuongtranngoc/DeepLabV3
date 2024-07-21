@@ -41,6 +41,7 @@ class Exporter:
         ts = torch.jit.trace(self.model, self.img, strict=False)
         logger.info(f'Optimizing for mobile...')
         ts.save(f)
+        logger.info("Done!")
         return f
     
     def export_paddle(self):
