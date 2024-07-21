@@ -1,7 +1,7 @@
 # DeepLabV3: Rethinking Atrous Convolution for Semantic Image Segmentation
 
 <p align="center">
-    <image src="images/deeplabv3.png" width=500px>
+    <image src="images/deeplabv3.png">
 </p>
 
 
