@@ -25,11 +25,18 @@ Before training, please modify configurations in `src/config/pascalvoc.yml`
 python -m src.train
 ```
 
+## Evaluation
+```bash
+python -m src.evaluate
+```
+
 **Result**
 
 |Loss| Mean IoU|
 |---|---|
 | <p align='center'><img src="images/eval_loss.png"></p> | <p align='center'><img src="images/eval_meanIoU.png"></p>  |
+
+
 
 ## Prediction
 ```bash
