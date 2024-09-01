@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import cv2
 import numpy as np
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
@@ -11,10 +12,13 @@ from src import config as cfg
 
 class TransformDeepLabv3(object):
     def __init__(self) -> None:
-        self.image_shape = cfg['Train']['transforms']['image_shape']
+        """
+        Reference: https://github.com/albumentations-team/albumentations/issues/718
+        """
+        self.C, self.W, self.H = cfg['Train']['transforms']['image_shape']
         self._transform = A.Compose([
-            A.Resize(self.image_shape[1], self.image_shape[2]),
-            A.Normalize(),
+            A.LongestMaxSize(max_size=max(self.W, self.H), interpolation=1),
+            A.PadIfNeeded(min_height=self.H, min_width=self.W, border_mode=0, value=(0, 0, 0)),
             ToTensorV2()
         ])
 
@@ -23,6 +27,18 @@ class TransformDeepLabv3(object):
         transformed_image = transformed['image']
         transformed_mask = transformed['mask']
         return transformed_image, transformed_mask
+
+    def decode_image(self, encode_image, org_image):
+        size_img = max(self.W, self.H)
+        h, w = org_image.shape[:2]
+        if max(h, w) > size_img:
+                size_img = max(h, w) 
+                encode_image = cv2.resize(encode_image, (size_img, size_img))
+        
+        h_pad = (size_img-h) // 2
+        w_pad = (size_img-w) // 2
+        out = encode_image[h_pad:h_pad+h, w_pad:w_pad+w]
+        return out
     
     def augment(self, image, mask):
         H, W = image.shape[:2]

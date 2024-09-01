@@ -44,8 +44,7 @@ def _compute_intersection_and_union(
     num_classes: int,
     ignore_index: int = 255,
     include_background: bool = False,
-    input_format: Literal["one-hot", "index", "predictions"] = "index",
-) -> tuple[Tensor, Tensor]:
+    input_format: Literal["one-hot", "index", "predictions"] = "index") -> tuple[Tensor, Tensor]:
     ignore_idxs = torch.where(target==ignore_index)
     target[ignore_idxs] = 0
     preds[ignore_idxs] = 0
@@ -92,7 +91,8 @@ class MeanIoU(Metric):
 
     def update(self, preds: Tensor, target: Tensor) -> None:
         intersection, union = _compute_intersection_and_union(
-            preds, target, self.num_classes, self.include_background, self.input_format
+            preds, target, self.num_classes, include_background=self.include_background, 
+            input_format=self.input_format
         )
         self.intersection += intersection.sum(0)
         self.union += union.sum(0)

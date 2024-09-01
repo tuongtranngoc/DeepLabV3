@@ -7,6 +7,8 @@ import torch.nn.functional as F
 
 
 from src import config as cfg
+from src.utils.data_utils import DataUtils
+from src.data.transformation import TransformDeepLabv3
 
 
 def voc_cmap(N=256, normalized=False):
@@ -34,6 +36,8 @@ class Visualizer:
     device = cfg['device']
     C, H, W = cfg['Train']['transforms']['image_shape']
     cmap = voc_cmap()
+    transform = TransformDeepLabv3()
+
     @classmethod
     def visualize_network(cls, model):
         os.makedirs(cfg['Debug']['model'], exist_ok=True)
@@ -59,17 +63,21 @@ class Visualizer:
         for i, idx in enumerate(idxs):
             img_path, mask_path = dataset.voc_dataset[idx]
             image, mask = dataset.get_image_mask(img_path, mask_path, False)
-
-            out = model(image.to(cls.device).unsqueeze(0))
+            org_image = cv2.imread(img_path)
+            out = model(DataUtils.to_device(image, dtype=torch.float32).unsqueeze(0))
             pred = out.max(dim=1)[1].detach().cpu().numpy()
             mask = mask.detach().cpu().numpy()
 
-            pred = cls.cmap[pred].astype(np.uint8)
-            mask = cls.cmap[mask].astype(np.uint8)
+            pred = cls.cmap[pred].astype(np.uint8).squeeze()
+            mask = cls.cmap[mask].astype(np.uint8).squeeze()
+
+            pred = cls.transform.decode_image(pred, org_image)
+            mask = cls.transform.decode_image(mask, org_image)
             pad = 20
-            x2mask = np.zeros((cls.H, cls.W*2 + pad, cls.C), dtype=np.uint8)
-            x2mask[0:cls.H, 0:cls.W] = pred
-            x2mask[0:cls.H, (pad + cls.W): (pad + cls.W*2)] = mask
+            H, W, C = org_image.shape
+            x2mask = np.zeros((H, W * 2 + pad, C), dtype=np.uint8)
+            x2mask[0:H, 0:W] = pred
+            x2mask[0:H, (pad + W): (pad + W*2)] = mask
 
             cv2.imwrite(os.path.join(cfg['Debug'][mode.lower()], f'{i}.png'), x2mask)
     
